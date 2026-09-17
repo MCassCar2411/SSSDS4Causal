@@ -264,7 +264,7 @@ def evaluate(
     plot_mean_data(power_values, label=f"{dataset}")
     plot_power_stats_by_loss(all_real_stats, all_gen_stats, power_metrics, label)
     plot_hourly_error_boxplots(power_values, label)
-
+    plot_tsne(power_values, label)
     # Plot ADMD/MDMD and sample distributions
     plot_all_testing_results(other_scores, admd_stats, aggregate_feat, label)
 
@@ -353,16 +353,36 @@ def evaluate_models(
                 param.requires_grad = False
             if loss_name == "SSSDS4":
                 with torch.no_grad():
+                    """
+                    generated_data = diffusion_model.infer(diffusion_model.denoiser, val_loader,  train_loader, fixed_noise=True, type='DDPM')
+                    generated_dataset = reverse_load(generated_data, train_loader)
+                    
+                    # split into customers and days
+                    generated_dataset = generated_dataset.reshape(num_days, size, T, 1)
+                    generated_dataset = generated_dataset.transpose(0, 2, 1, 3).squeeze(-1) # B, T, C
+                    
+                    pd.DataFrame(generated_dataset.reshape(-1, C)).to_csv(save_dir + "_Diff_synth.csv")
+                    """
+
                     generated_dataset = pd.read_csv(
                         save_dir + "_Diff_synth.csv", index_col=0
                     )
-                    print(generated_dataset.shape)
                     generated_dataset = generated_dataset.values.reshape(
                         num_days, T, size
                     )
 
             elif loss_name == "SSSDS4+causal":
                 with torch.set_grad_enabled(True):
+                    """
+                    generated_data = diffusion_model.infer(diffusion_model.denoiser, val_loader, train_loader, fixed_noise=True, type='Guide', p=100) #replace by loading the same data
+                    generated_dataset = reverse_load(generated_data, train_loader)
+                    
+                    # split into customers and days
+                    generated_dataset = generated_dataset.reshape(num_days, size, T, 1)
+                    generated_dataset = generated_dataset.transpose(0, 2, 1, 3).squeeze(-1) # B, T, C
+                   
+                    pd.DataFrame(generated_dataset.reshape(-1, C)).to_csv(save_dir + "_Diff_Causal_synth.csv")
+                    """
                     generated_dataset = pd.read_csv(
                         save_dir + "_Diff_Causal_synth.csv", index_col=0
                     )
@@ -370,7 +390,7 @@ def evaluate_models(
                     generated_dataset = generated_dataset.values.reshape(
                         num_days, T, size
                     )
-                    print(generated_dataset.shape)
+
         if loss_name == "WGAN":
             load_path = f"train/WGANGP/load_WGANGP_1_0_{dataset}"
 
@@ -403,9 +423,10 @@ def evaluate_models(
             )
             gen.weights_initialize(mean=0.0, std=0.02)
             gen.eval()
+            print(f"Loading weights from: {load_path}")
             gen = torch.load(load_path, weights_only=False)
 
-            print(f"Loading weights from: {load_path}")
+            
 
             # Sample MODEL
             generated_data = build_gan_scenarios(
@@ -427,171 +448,117 @@ def evaluate_models(
             # split into customers and days
             # generated_dataset = generated_dataset.reshape(num_days, 158, T, 1)
             generated_dataset = generated_dataset.transpose(0, 2, 1)  # B, T, C
-        if loss_name == "elexon":
-            save_dir = f"train/Elexon/fval_{dataset}/"
-            generated_data = pd.read_csv(save_dir + "Elexon_val.csv")
-
-            generated_dataset = generated_data["Customer Loads"]
-            generated_dataset = generated_dataset.apply(ast.literal_eval)
-            generated_dataset = organise_customers(generated_dataset, T, size)
-
-            generated_dataset = generated_dataset.reshape(num_days, size, T, 1)
-            generated_dataset = generated_dataset.transpose(0, 2, 1, 3).squeeze(
-                -1
-            )  # B, T, C
-        if loss_name == "CREST":
-            save_dir = f"train/CREST/fval_{dataset}/"
-            generated_data = pd.read_csv(save_dir + "CREST_val.csv")
-            generated_dataset = generated_data["Customer_load"]
-            generated_dataset = generated_dataset.apply(ast.literal_eval)
-            generated_dataset = organise_customers(generated_dataset, T, size)
-            print(generated_dataset.shape)
-
-            generated_dataset = generated_dataset.reshape(num_days, size, T, 1)
-            generated_dataset = generated_dataset.transpose(0, 2, 1, 3).squeeze(
-                -1
-            )  # B, T, C
-
-            print(generated_dataset.shape)
+        
 
         # ADMD
-        admd_gen = compute_admd_mdmd(
-            generated_dataset, label="synth", C=generated_dataset.shape[2]
-        )
-        admd_real = compute_admd_mdmd(agg_real, label="real", C=size)
-        admd_score = wasserstein_distance(admd_real.flatten(), admd_gen.flatten())
+        #ADMD
+        admd_gen = compute_admd_mdmd(generated_dataset, label='synth', C=generated_dataset.shape[2])
+        admd_real = compute_admd_mdmd(agg_real, label='real', C=size)
+        admd_score= wasserstein_distance(admd_real.flatten(), admd_gen.flatten())
 
-        plot_peaks(generated_dataset, agg_real, label=loss_name + f"_{dataset}")
-        plot_tsne(
-            agg_real,
-            generated_dataset,
-            labels=("Real", "Synthetic"),
-            label=loss_name + f"_{dataset}",
-            level="agg",
-        )
+        plot_peaks(generated_dataset, agg_real, label=loss_name+f"_{dataset}")
+        agg_synth = generated_dataset.sum(axis=2)
+        #plot_tsne(agg_real, generated_dataset, labels=('Real', 'Synthetic'), label = loss_name+f"_{dataset}", level='agg')
 
-        avg_mmd_score_agg, _ = mmd(
-            n_samples, agg_real, generated_dataset, level="agg", seeds=10, seed=seed
-        )
-        wd_score_agg, _ = wd(
-            n_samples, agg_real, generated_dataset, level="agg", seeds=10, seed=seed
-        )
-        rmse_mae_agg = rmse_mae_score(
-            agg_real,
-            generated_dataset,
-            level="agg",
-            n_samples=n_samples,
-            seeds=10,
-            seed=seed,
-        )
+        avg_mmd_score_agg, _ = mmd(n_samples, agg_real, generated_dataset, level='agg', seeds=10, seed=seed)
+        wd_score_agg, _ = wd(n_samples, agg_real, generated_dataset, level='agg', seeds=10, seed=seed)
+        rmse_mae_agg = rmse_mae_score(agg_real, generated_dataset, level='agg', n_samples=n_samples, seeds=10, seed=seed)
         rmse_agg = rmse_mae_agg["rmse_mean"]
         mae_agg = rmse_mae_agg["mae_mean"]
 
-        print(
-            f"{loss_name} - Epoch {best_epoch}: MMD = {avg_mmd_score_agg:.5f}, WD = {wd_score_agg:.5f}, RMSE = {rmse_agg:.4f}, MAE = {mae_agg:.4f}, ADMD = {admd_score:.5f}"
-        )
+        print(f"{loss_name} - Epoch {best_epoch}: MMD = {avg_mmd_score_agg:.5f}, WD = {wd_score_agg:.5f}, RMSE = {rmse_agg:.4f}, MAE = {mae_agg:.4f}, ADMD = {admd_score:.5f}")
 
-        # Aggregate level
+        #Aggregate level
         print("These are real stats")
-        real_stats_a = compute_power_stats(agg_real, label="real", level="aggregate")
+        real_stats_a= compute_power_stats(agg_real, label="real", level='aggregate')
         print("These are synth stats")
-        gen_stats_a = compute_power_stats(
-            generated_dataset, label="synth", level="aggregate"
-        )
-
+        gen_stats_a = compute_power_stats(generated_dataset, label="synth", level='aggregate')
+    
         dist_a = power_stat_distances(real_stats_a, gen_stats_a)
-        print(dist_a)
-
-        # Measure peak prominence and sharpness
+        print(dist_a) 
+        
+        #Measure peak prominence and sharpness
         deriv_r = measure_peaks(agg_real, C, label=loss_name)
         deriv_s = measure_peaks(generated_dataset, C, label="synth")
-
-        # Household level
-        # Mask the missing customers in synth data
+        
+        #Household level
+        generated_dataset = generated_dataset.copy()
+        #Mask the missing customers in synth data
         for day in range(generated_dataset.shape[0]):
             for cust in range(generated_dataset.shape[1]):
-                if np.sum(real_dataset[day, :, cust]) == 0:
-                    generated_dataset[day, :, cust] = 0
+                if np.sum(real_dataset[day, :, cust])==0:
+                    generated_dataset[day, :, cust]=0
 
-        # Metrics
-        avg_mmd_score_ind, _ = mmd(
-            n_samples, real_dataset, generated_dataset, level="ind", seeds=10, seed=seed
-        )
-        wd_score_ind, _ = wd(
-            n_samples, real_dataset, generated_dataset, level="ind", seeds=10, seed=seed
-        )
-        rmse_mae_ind = rmse_mae_score(
-            real_dataset,
-            generated_dataset,
-            level="ind",
-            n_samples=n_samples,
-            seeds=10,
-            seed=seed,
-        )
-        plot_tsne(
-            real_dataset,
-            generated_dataset,
-            labels=("Real", "Synthetic"),
-            label=loss_name + f"_{dataset}",
-            level="ind",
-        )
+
+        
+        #Metrics
+        avg_mmd_score_ind, _ = mmd(n_samples, real_dataset, generated_dataset, level='ind', seeds=10, seed=seed)
+        wd_score_ind, _ = wd(n_samples, real_dataset, generated_dataset, level='ind', seeds=10, seed=seed)
+        rmse_mae_ind = rmse_mae_score(real_dataset, generated_dataset, level='ind', n_samples=n_samples, seeds=10, seed=seed)
+        #plot_tsne(real_dataset, generated_dataset, labels=('Real', 'Synthetic'), label = loss_name+f"_{dataset}", level='ind')
         rmse_ind = rmse_mae_ind["rmse_mean"]
         mae_ind = rmse_mae_ind["mae_mean"]
-        print(
-            f"{loss_name} - Epoch {best_epoch}: MMD = {avg_mmd_score_ind:.5f}, WD = {wd_score_ind:.5f}, RMSE = {rmse_ind:.4f}, MAE = {mae_ind:.4f}"
-        )
+        print(f"{loss_name} - Epoch {best_epoch}: MMD = {avg_mmd_score_ind:.5f}, WD = {wd_score_ind:.5f}, RMSE = {rmse_ind:.4f}, MAE = {mae_ind:.4f}")
 
-        # Household level
+        #Household level 
         print("These are real stats")
-        real_stats_h = compute_power_stats(
-            real_dataset, label="real", level="household"
-        )
+        real_stats_h = compute_power_stats(real_dataset, label="real", level='premises')
         print("These are synth stats")
-        gen_stats_h = compute_power_stats(
-            generated_dataset, label="synth", level="household"
-        )
+        gen_stats_h = compute_power_stats(generated_dataset, label="synth", level='premises')
 
         dist_h = power_stat_distances(real_stats_h, gen_stats_h)
         print(dist_h)
 
-        agg_features[loss_name] = {"real": deriv_r, "synth": deriv_s}
+        agg_features[loss_name] = {
+            'real': deriv_r,
+            'synth': deriv_s
+         }
 
-        power_metrics[loss_name] = {"household": dist_h, "aggregate": dist_a}
+        power_metrics[loss_name] = {
+            "household": dist_h,
+            "aggregate": dist_a
+        }
 
         all_real_stats[loss_name] = {
             "household": real_stats_h,
-            "aggregate": real_stats_a,
+            "aggregate": real_stats_a
         }
-
-        all_gen_stats[loss_name] = {"household": gen_stats_h, "aggregate": gen_stats_a}
-        all_admd_stats[loss_name] = {"real": admd_real, "generated": admd_gen}
-
+       
+        all_gen_stats[loss_name] =  {
+            "household": gen_stats_h,
+            "aggregate": gen_stats_a
+        }
+        all_admd_stats[loss_name] = {
+            "real": admd_real,
+            "generated": admd_gen
+        }
+       
+        
         all_scores[loss_name] = {
             "agg": {
                 "mmd": avg_mmd_score_agg,
                 "wd": wd_score_agg,
                 "rmse": rmse_mae_agg["rmse_mean"],
-                "mae": rmse_mae_agg["mae_mean"],
+                "mae": rmse_mae_agg["mae_mean"]
             },
             "ind": {
                 "mmd": avg_mmd_score_ind,
                 "wd": wd_score_ind,
                 "rmse": rmse_mae_ind["rmse_mean"],
-                "mae": rmse_mae_ind["mae_mean"],
-            },
+                "mae": rmse_mae_ind["mae_mean"]
+            }
         }
 
-        power_values[loss_name] = {"real": real_dataset, "synth": generated_dataset}
 
-    return (
-        all_admd_stats,
-        power_values,
-        all_scores,
-        power_metrics,
-        all_real_stats,
-        all_gen_stats,
-        agg_features,
-    )
+        power_values[loss_name] = {
+          "real_ind": real_dataset,
+          "real_agg": agg_real,
+          "synth_ind": generated_dataset,
+          "synth_agg": agg_synth
+        }
+        
+    
+    return all_admd_stats, power_values, all_scores, power_metrics, all_real_stats, all_gen_stats, agg_features
 
 
 def evaluate_p(config, file_path_train, file_path_val, device, dataset="elektro"):

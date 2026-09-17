@@ -3,6 +3,7 @@ import random
 import numpy as np
 import torch
 from sklearn import metrics
+from scipy.ndimage import gaussian_filter1d
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.metrics.pairwise import euclidean_distances
 
@@ -428,6 +429,5 @@ def measure_peaks(data, C=158, label="real"):
         "fall slope evening duration": fs_evening_duration,
         "Evening curvature": evetonight_curvature,  # second deriv
     }
-    print(agg_feat)
 
     return agg_feat

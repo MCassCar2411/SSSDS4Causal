@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import scipy
 import xgboost as xgb
-from DML.non_parametric_sensitivity import sensitivity_analysis
+from DML.partial_linear_sensitivity import sensitivity_analysis
 from scipy.interpolate import interp1d
 from sklearn.ensemble import RandomForestRegressor
 
@@ -324,7 +324,7 @@ def refute_random_common_cause(
 
     path = f"results/causality/{dataset}"
     og_df = pd.read_csv(
-        f"{path}/results_causal_temperature_per_hour_day_1000_500.csv"
+        f"{path}/results_causal_temperature_per_hour_day_hour.csv"
     )  # change name later
 
     if run:
