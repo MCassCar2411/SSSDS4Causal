@@ -421,28 +421,11 @@ def fit_gan_wasserstein(
         D_VS = dis(input=G_VS_samples, context=torch.from_numpy(real_cond).to(device))
         loss_G_VS = -torch.mean(D_VS).detach()
 
-        # TEST loss
-        # D
-        # G_TEST_samples = gen(noise=torch.randn(y_TEST.shape[0], gen.latent_s).to(device), context=x_TEST_gpu)
-        # loss_D_TEST = dis.loss(generated_samples=G_TEST_samples, true_samples=y_TEST_gpu, context=x_TEST_gpu).detach()
-
-        # G
-        # D_TEST = dis(input=G_TEST_samples, context=x_TEST_gpu)
-        # loss_G_TEST = -torch.mean(D_TEST).detach()
-
         # Save NF model when the VS loss is minimal
         loss_list.append([loss_D_LS, loss_G_LS, loss_D_VS, loss_G_VS])
 
         end = timer()
         time_tot += end - start
-
-        # if wdb:
-        # wandb.log({"D ls loss": loss_D_LS})
-        # wandb.log({"G ls loss": loss_G_LS})
-        # wandb.log({"D vs loss": loss_D_VS})
-        # wandb.log({"G vs loss": loss_G_VS})
-        # wandb.log({"D test loss": loss_D_TEST})
-        # wandb.log({"G test loss": loss_G_TEST})
 
         if epoch % 10 == 0:
             print(
@@ -475,11 +458,9 @@ def build_gan_scenarios(
     else:
         device = "cpu"
     gen.to(device)
-    # nb_days = len(x)
     time_tot = 0.0
     scenarios = []
 
-    # self.eval()
     with torch.no_grad():
         for batch in val_loader:
             start = timer()
@@ -490,21 +471,12 @@ def build_gan_scenarios(
             print(x.shape)
             predictions = gen.sample(n_s=conditions.shape[0], x_cond=x[0, :])
 
-            # predictions = y_scaler.inverse_transform(predictions)
-            # corrections -> genereration is always > 0 and < max capacity
-
-            # predictions[predictions < 0] = 0
-            # predictions[predictions > max] = max
-
             scenarios_tmp = predictions
             scenarios.append(
                 scenarios_tmp.transpose()
             )  # list of arrays of shape (24, n_s)
             end = timer()
             time_tot += end - start
-            # print("day {:.0f} Approximate time left : {:2f} min".format(i, time_tot / (i + 1) * (nb_days - (i + 1))/60), end="\r",flush=True)
-            # if i % 20 == 0:
-            #     print("day {:.0f} Approximate time left : {:2f} min".format(i, time_tot / (i + 1) * (nb_days - (i + 1)) / 60))
         print("Scenario generation time_tot %.1f min" % (time_tot / 60))
         return np.concatenate(scenarios, axis=0)  # shape = (24*n_days, n_s)
 
@@ -515,19 +487,13 @@ def plot_GAN_loss(loss: np.array, ylim: list, dir_path: str, name: str):
     """
     FONTSIZE = 10
     nb_epoch = loss.shape[0]
-    # epoch_min_D = np.nanargmin(loss[:, 0])
-    # epoch_min_G = np.nanargmin(loss[:, 1])
 
     plt.figure()
     plt.plot(loss[:, 0], label="D LS")
     plt.plot(loss[:, 1], label="G LS")
     plt.plot(loss[:, 2], label="D VS")
     plt.plot(loss[:, 3], label="G VS")
-    # plt.plot(loss[:, 4], label='D TEST')
-    # plt.plot(loss[:, 5], label='G TEST')
     plt.hlines(y=0, xmin=0, xmax=nb_epoch)
-    # plt.vlines(x=epoch_min_D, ymin=ylim[0], ymax=ylim[1], colors='k', label='D VS loss at ' + str(epoch_min_D) + ' = ' + str(round(loss[epoch_min_D, 2], 2)))
-    # plt.vlines(x=epoch_min_G, ymin=ylim[0], ymax=ylim[1], colors='k', label='G VS loss at ' + str(epoch_min_G) + ' = ' + str(round(loss[epoch_min_G, 3], 2)))
     plt.xlabel("epoch", fontsize=FONTSIZE)
     plt.ylabel("ll loss", fontsize=FONTSIZE)
     plt.tick_params(axis="both", labelsize=FONTSIZE)
@@ -629,10 +595,6 @@ if __name__ == "__main__":
             "weight_decay": config_GAN["weight_decay"],
         }
 
-        # Dump into a json the VAE configuration
-        # with open(dir_path + config['name'] + '.json', 'w') as file:
-        #   json.dump(config, file, cls=NumpyEncoder)
-
         # Instance critic neural network: discriminator using Wasserstein distance estimate
         dis = Discriminator_wassertein(
             latent_s=config_GAN["latent_s"],
@@ -701,19 +663,13 @@ if __name__ == "__main__":
         torch.save(loss, dir_path + "loss_" + name + "_" + dataset)
         torch.save(gen, dir_path + name + "_" + dataset)
         print(f"Checkpoint saved to {dir_path + 'loss_' + name + '_' + dataset}")
-        #
-        # dump_file(dir=dir_path, name='loss_' + name, file=loss)
-        # dump_file(dir=dir_path, name=name, file=gen)
-        #
         # --------------------------------------------------------------------------------------------------------------
         # Plot loss function
         # --------------------------------------------------------------------------------------------------------------
         plot_GAN_loss(loss=loss, ylim=ylim_loss, dir_path=dir_path, name="ll_" + name)
     if mode == "eval":
-        # n_s=158
         dir_path = "train/WGANGP/load_WGANGP_1_0"
         config.train["batch_size"] = 158
-        # gen = read_file(dir=dir_path, name=name)
         max_cap = 1
         # Scenarios are generated into a dict of length nb days (#VS or # TEST sizes)
         # Each day of the dict is an array of shape (n_scenarios, 24)
@@ -775,8 +731,6 @@ if __name__ == "__main__":
             train_dataset_diff,
         )  # C*T, B
         print(generated_dataset.shape)
-        # split into customers and days
-        # generated_dataset = generated_dataset.reshape(num_days, 158, T, 1)
         generated_dataset = generated_dataset.transpose(0, 2, 1)  # B, T, C
         print(generated_dataset.shape)
 

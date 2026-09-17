@@ -52,8 +52,6 @@ def mmd(n_samples, real_data, synthetic_data, level="agg", seeds=4, gamma=1.0, s
 
     n = min(len(real), len(synth), n_samples)
     rng = np.random.default_rng(seed)
-    # real = real[rng.choice(len(real), n, replace=False)]
-    # synth = synth[rng.choice(len(synth), n, replace=False)]
 
     gamma_sample = real[rng.choice(len(real), min(500, len(real)), replace=False)]
 
@@ -129,7 +127,6 @@ def wd(n_samples, real_dataset, generated_dataset, level="agg", seeds=4, seed=42
         # WD per time-step dimension across samples (distributional comparison)
         # wd = wasserstein_distance_nd(real_subset, synth_subset)
         wd = wasserstein_distance(real_subset.flatten(), synth_subset.flatten())
-        # mean_wd = np.mean(wd_list)
         all_scores.append(wd)
         print(f"Seed: {s}\tWD Score: {str(wd).replace('.', ',')}")
 
@@ -182,8 +179,6 @@ def rmse_mae_score(
         # Compare distribution means/stds per timestep rather than paired pointwise
         real_mean = real_subset.mean(axis=0)  # (T,)
         synth_mean = synth_subset.mean(axis=0)  # (T,)
-        real_std = real_subset.std(axis=0)
-        synth_std = synth_subset.std(axis=0)
 
         rmse = np.sqrt(mean_squared_error(real_mean, synth_mean))
         mae = mean_absolute_error(real_mean, synth_mean)
@@ -212,8 +207,6 @@ def compute_power_stats(data, label, level="household"):
         if label == "synth":
             data = data.sum(axis=2, keepdims=False)  # aggregate over customers (B, T)
 
-        data_hourly = data.reshape(data.shape[0], 24, 2).mean(axis=2)
-
         results = {
             "overall_mean": data.mean(),
             "overall_peak": data.max(),
@@ -232,10 +225,6 @@ def compute_power_stats(data, label, level="household"):
         print("Daily Peak Avg:", np.round(results["daily_peak"].mean(), 2))
 
     else:
-        data_hourly = data.reshape(data.shape[0], 24, 2, data.shape[2]).mean(
-            axis=2
-        )  # (B, 24, C)
-
         results = {
             "overall_mean": data.mean(),
             "overall_peak": data.max(),

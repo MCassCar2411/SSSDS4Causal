@@ -1,7 +1,6 @@
 # from DOWHY
 import logging
 
-# from tqdm import tqdm #bootsratp progress
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -10,7 +9,10 @@ from sklearn.model_selection import KFold
 
 from DML.utils import get_regression_r2
 
-# Turn nonparametricsensitivityanalyzer into a simpler function - adaptatyion of the code from DoWhy package to perform sensitivity analysis for causal inference. The code is modified to work with a sliding window approach to estimate CATE over time, capturing non-stationary effects in the data.
+# Turn nonparametricsensitivityanalyzer into a simpler function -
+# adaptatyion of the code from DoWhy package to perform sensitivity analysis for causal inference.
+# The code is modified to work with a sliding window approach to estimate CATE over time,
+# capturing non-stationary effects in the data.
 
 
 def sensitivity_analysis(
@@ -719,32 +721,6 @@ def estimate_CATE_general(
                 )
 
                 print(analyser)
-                """
-                analyzer = NonParametricSensitivityAnalyzer(
-                   estimator=res['cate_linear'],
-                    num_splits=5,
-                    shuffle_data=True,
-                    shuffle_random_seed=42,
-                    benchmark_common_causes=["month", "clear_sky_ghi"],
-                    significance_level=0.05,
-                    frac_strength_treatment=0.5,
-                    frac_strength_outcome=0.5,
-                    effect_fraction_on_treatment = 0.2,
-                    effect_fraction_on_outcome = 0.2,
-                    theta_s=res['cate_linear'],
-                    observed_common_causes = random_subset[['wind_speed', 'humidity', 'clear_sky_ghi', 'rainfall', 'month', 'Holiday', 'hour']],
-                    outcome=random_subset[outcome],
-                    treatment=random_subset[treatment],
-                    plugin_reisz=False
-
-
-                )
-                # Perform sensitivity analysis
-                analyzer.check_sensitivity(plot=True)
-                # Access results
-                print(analyzer)
-                print(analyzer.results)
-                """
                 # Append the mean trend value and CATE to results
                 results.append(
                     {
