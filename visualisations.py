@@ -4,25 +4,19 @@ import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-import torch
 from scipy.stats import wasserstein_distance
 from sklearn.manifold import TSNE
 
 
-def plot_tsne(
-    power_values,
-    label,
-    num_samples=600,
-    seed=42
-):
+def plot_tsne(power_values, label, num_samples=600, seed=42):
 
     loss_names = list(power_values.keys())
-    levels = ["premises", "aggregate"] 
+    levels = ["premises", "aggregate"]
 
     n_rows, n_cols = len(levels), len(loss_names)
-    fig, axes = plt.subplots(n_rows, n_cols,
-                              figsize=(6* n_cols, 5 * n_rows),
-                              sharex=True, sharey=True)
+    _, axes = plt.subplots(
+        n_rows, n_cols, figsize=(6 * n_cols, 5 * n_rows), sharex=True, sharey=True
+    )
 
     # Normalize axes to a consistent 2D array regardless of n_rows/n_cols
     axes = np.atleast_2d(axes)
@@ -36,57 +30,86 @@ def plot_tsne(
             ax = axes[r, c]
 
             if level == "aggregate":
-                #(B, 48)
-                real_data_agg = power_values[loss]['real_agg']
-                synthetic_data_agg  = power_values[loss]['synth_agg']
-              
-                #normalise per day
+                # (B, 48)
+                real_data_agg = power_values[loss]["real_agg"]
+                synthetic_data_agg = power_values[loss]["synth_agg"]
+
+                # normalise per day
                 real_data = real_data_agg / real_data_agg.max(axis=1, keepdims=True)
-                synthetic_data = synthetic_data_agg / synthetic_data_agg.max(axis=1, keepdims=True)
+                synthetic_data = synthetic_data_agg / synthetic_data_agg.max(
+                    axis=1, keepdims=True
+                )
             else:  # household
-                #(B, 48, C)
-                real_data_ind = power_values[loss]['real_ind']
-                synthetic_data_ind = power_values[loss]['synth_ind']
+                # (B, 48, C)
+                real_data_ind = power_values[loss]["real_ind"]
+                synthetic_data_ind = power_values[loss]["synth_ind"]
                 real_data_ind = real_data_ind.transpose(0, 2, 1)  # (195, 158, 48)
-                real_data_ind = real_data_ind.reshape(-1, 48)      # (30810, 48)
+                real_data_ind = real_data_ind.reshape(-1, 48)  # (30810, 48)
 
-                synthetic_data_ind = synthetic_data_ind.transpose(0, 2, 1)  # (195, 158, 48)
-                synthetic_data_ind = synthetic_data_ind.reshape(-1, 48)      # (30810, 48)
+                synthetic_data_ind = synthetic_data_ind.transpose(
+                    0, 2, 1
+                )  # (195, 158, 48)
+                synthetic_data_ind = synthetic_data_ind.reshape(-1, 48)  # (30810, 48)
 
-                #normalise per day
-                real_data_ind = real_data_ind / (real_data_ind.max(axis=1, keepdims=True)+1e-8)
-                synthetic_data_ind = synthetic_data_ind / (synthetic_data_ind.max(axis=1, keepdims=True)+1e-8)
+                # normalise per day
+                real_data_ind = real_data_ind / (
+                    real_data_ind.max(axis=1, keepdims=True) + 1e-8
+                )
+                synthetic_data_ind = synthetic_data_ind / (
+                    synthetic_data_ind.max(axis=1, keepdims=True) + 1e-8
+                )
 
                 rng = np.random.default_rng(seed)
 
-                real_data = real_data_ind[rng.choice(len(real_data_ind), num_samples, replace=False)]
-                synthetic_data= synthetic_data_ind[rng.choice(len(synthetic_data_ind), num_samples, replace=False)]
+                real_data = real_data_ind[
+                    rng.choice(len(real_data_ind), num_samples, replace=False)
+                ]
+                synthetic_data = synthetic_data_ind[
+                    rng.choice(len(synthetic_data_ind), num_samples, replace=False)
+                ]
 
             print(f"Real: {real_data.shape}, Synthetic: {synthetic_data.shape}")
             n_real = len(real_data)
             combined = np.vstack([real_data, synthetic_data])
 
-            tsne = TSNE(n_components=2, perplexity=15, random_state=seed, max_iter=300, early_exaggeration=10.0,
-                        init='pca', learning_rate='auto')
+            tsne = TSNE(
+                n_components=2,
+                perplexity=15,
+                random_state=seed,
+                max_iter=300,
+                early_exaggeration=10.0,
+                init="pca",
+                learning_rate="auto",
+            )
             embedding = tsne.fit_transform(combined)
 
-           
-            ax.scatter(embedding[0:n_real][:, 0], embedding[0:n_real][:, 1], #real_x and real_y
-                        c='mediumblue', alpha=0.9, s=100, label="Real")
-            ax.scatter(embedding[n_real:][:, 0], embedding[n_real:][:, 1], #gen_x and gen_y
-                        c='firebrick', alpha=0.9, s=100, label="Synthetic", marker='x')
-            #plt.title(f"t-SNE: Real vs Synthetic ({label})")
-            ax.tick_params(axis='both', labelsize=22)  
+            ax.scatter(
+                embedding[0:n_real][:, 0],
+                embedding[0:n_real][:, 1],  # real_x and real_y
+                c="mediumblue",
+                alpha=0.9,
+                s=100,
+                label="Real",
+            )
+            ax.scatter(
+                embedding[n_real:][:, 0],
+                embedding[n_real:][:, 1],  # gen_x and gen_y
+                c="firebrick",
+                alpha=0.9,
+                s=100,
+                label="Synthetic",
+                marker="x",
+            )
+            ax.tick_params(axis="both", labelsize=22)
 
         for c in range(n_cols):
             axes[-1, c].set_xlabel("t-SNE Component 1", fontsize=22)
 
-
         for r in range(n_rows):
-            axes[r, 0].set_ylabel("t-SNE Component 2",  fontsize=22)
+            axes[r, 0].set_ylabel("t-SNE Component 2", fontsize=22)
 
     plt.subplots_adjust(wspace=0.03, hspace=0.03)
-    
+
     plt.savefig(f"results/tsne_{label}.pdf", dpi=300, bbox_inches="tight")
     plt.close()
 
@@ -105,7 +128,6 @@ def plot_aug_synthetic_data(
         (_,) = ax.plot(aggregate[i, :], color="grey", alpha=0.3, linewidth=1)
 
     # Plot Ground Truth
-
     (line_real,) = ax.plot(
         x0.flatten().tolist(),
         color="red",
@@ -158,18 +180,19 @@ def plot_mean_data(data, label, seed=None):
     # B, T, C
     loss_names = list(data.keys())
 
-    num_batches = data[loss_names[0]]['real_agg'].shape[0]
+    num_batches = data[loss_names[0]]["real_agg"].shape[0]
     rng = np.random.default_rng(seed)
     # Select a random batch index to represent a random day
     random_batch_index = rng.integers(low=0, high=num_batches)
-    
-    
-    fig, ax = plt.subplots(figsize=(10, 5))
-    for loss_name in data:
-        aggregate_s = data[loss_name]['synth_agg'][random_batch_index, :]
-        ax.plot(aggregate_s, label=f"Synthetic Aggregate Demand {loss_name}", linewidth=2)
 
-    aggregate_r = data[loss_names[0]]['real_agg'][random_batch_index, :]
+    _, ax = plt.subplots(figsize=(10, 5))
+    for loss_name in data:
+        aggregate_s = data[loss_name]["synth_agg"][random_batch_index, :]
+        ax.plot(
+            aggregate_s, label=f"Synthetic Aggregate Demand {loss_name}", linewidth=2
+        )
+
+    aggregate_r = data[loss_names[0]]["real_agg"][random_batch_index, :]
     ax.plot(aggregate_r, label="Real Aggregate Demand", linewidth=2, color="red")
     ax.set_ylabel("Power (kW)", fontsize=12)
     ax.set_xlabel("Time Steps (30 min)", fontsize=12)
@@ -180,17 +203,23 @@ def plot_mean_data(data, label, seed=None):
     plt.savefig(f"results/mean_profiles_agg_{label}.pdf")
     plt.close()
 
-    num_customers = data[loss_names[0]]['real_ind'].shape[2]
-    
+    num_customers = data[loss_names[0]]["real_ind"].shape[2]
+
     # Select a random customer index
     random_customer_index = rng.integers(low=0, high=num_customers)
     print(random_customer_index)
-    fig, ax = plt.subplots(figsize=(10, 5))
+    _, ax = plt.subplots(figsize=(10, 5))
     for loss_name in data:
-        aggregate_s = data[loss_name]['synth_ind'][random_batch_index, :, random_customer_index]
-        ax.plot(aggregate_s, label=f"Synthetic Aggregate Demand {loss_name}", linewidth=2)
-    
-    aggregate_r = data[loss_names[0]]['real_ind'][random_batch_index, :, random_customer_index]
+        aggregate_s = data[loss_name]["synth_ind"][
+            random_batch_index, :, random_customer_index
+        ]
+        ax.plot(
+            aggregate_s, label=f"Synthetic Aggregate Demand {loss_name}", linewidth=2
+        )
+
+    aggregate_r = data[loss_names[0]]["real_ind"][
+        random_batch_index, :, random_customer_index
+    ]
     ax.plot(aggregate_r, label="Real Aggregate Demand", linewidth=2, color="red")
     ax.set_ylabel("Power (kW)", fontsize=12)
     ax.set_xlabel("Time Steps (30 min)", fontsize=12)
@@ -203,11 +232,11 @@ def plot_mean_data(data, label, seed=None):
     plt.savefig(f"results/mean_profiles_single_{label}.pdf")
     plt.close()
 
+
 def plot_training_curve(train_losses, loss_name, input_dim):
     """Plots the training and validation loss over epochs."""
     plt.figure(figsize=(10, 5))
     plt.plot(train_losses, label="Training Loss", marker="o")
-    # plt.plot(val_losses, label="Validation Loss", marker="o", linestyle="dashed")
     plt.xlabel("Epochs")
     plt.ylabel("Loss")
     plt.title("Training Loss per Epoch")
@@ -396,7 +425,6 @@ def plot_deriv_distirbutions(aggregate_feat, label):
     ax.set_yscale("log")
     ax.tick_params(axis="both", which="major", labelsize=14)
     ax.tick_params(axis="both", which="minor", labelsize=14)
-    # ax.set_title(f"Feature WD Summary — {label}")
     ax.grid(True, alpha=0.4, axis="y")
     ax.legend(
         loc="upper center",
@@ -435,9 +463,6 @@ def plot_power_stats_by_loss(all_real_stats, all_gen_stats, power_metrics, input
     for level in ["household", "aggregate"]:
         # Line Plot: Hourly Mean Profiles
         plt.figure(figsize=(10, 6))
-        # for loss in loss_names:
-        #   if level == 'aggregate':
-        #      plt.plot(np.arange(48), all_gen_stats[loss][level]['hourly_mean'], label=f"{loss} (gen)")
 
         if level == "aggregate":
             plt.plot(
@@ -481,7 +506,6 @@ def plot_power_stats_by_loss(all_real_stats, all_gen_stats, power_metrics, input
         ):
             sns.kdeplot(d, label=labels[i], linewidth=2)
 
-        # plt.title(f'Daily Mean Distribution - {level} (Density)')
         plt.xlabel("kW")
         plt.ylabel("Density")
         plt.legend()
@@ -591,15 +615,14 @@ def plot_power_stats_by_loss(all_real_stats, all_gen_stats, power_metrics, input
 
 
 def plot_hourly_error_boxplots(power_values, input_dim):
-
     loss_names = list(power_values.keys())
     half_hours = np.arange(24)
-    levels = ['aggregate', 'premises']
+    levels = ["aggregate", "premises"]
 
     n_rows, n_cols = len(loss_names), len(levels)
-    fig, axes = plt.subplots(n_rows, n_cols,
-                              figsize=(7 * n_cols, 4 * n_rows),
-                              sharex=True, sharey=False)
+    fig, axes = plt.subplots(
+        n_rows, n_cols, figsize=(7 * n_cols, 4 * n_rows), sharex=True, sharey=False
+    )
 
     # Normalize axes to a consistent 2D array regardless of n_rows/n_cols
     axes = np.atleast_2d(axes)
@@ -614,19 +637,24 @@ def plot_hourly_error_boxplots(power_values, input_dim):
 
             if level == "aggregate":
                 # Sum over households -> (48, C)
-                real_arr = power_values[loss]['real_agg']
-                gen_arr  = power_values[loss]['synth_agg']
+                real_arr = power_values[loss]["real_agg"]
+                gen_arr = power_values[loss]["synth_agg"]
                 real_stat = real_arr.reshape(real_arr.shape[0], 24, 2).mean(axis=2)
-                gen_stat  = gen_arr.reshape(gen_arr.shape[0], 24, 2).mean(axis=2)
+                gen_stat = gen_arr.reshape(gen_arr.shape[0], 24, 2).mean(axis=2)
             else:  # household
-                
-                real_arr = power_values[loss]['real_ind']
-                gen_arr  = power_values[loss]['synth_ind']
+                real_arr = power_values[loss]["real_ind"]
+                gen_arr = power_values[loss]["synth_ind"]
                 # Keep per-household resolution: flatten (days, households) per half-hour
-                real_stat = real_arr.reshape(real_arr.shape[0], -1) \
-                    if real_arr.shape[0] == 24 else real_arr.reshape(-1, real_arr.shape[-1]).T
-                gen_stat = gen_arr.reshape(gen_arr.shape[0], -1) \
-                    if gen_arr.shape[0] == 24 else gen_arr.reshape(-1, gen_arr.shape[-1]).T
+                real_stat = (
+                    real_arr.reshape(real_arr.shape[0], -1)
+                    if real_arr.shape[0] == 24
+                    else real_arr.reshape(-1, real_arr.shape[-1]).T
+                )
+                gen_stat = (
+                    gen_arr.reshape(gen_arr.shape[0], -1)
+                    if gen_arr.shape[0] == 24
+                    else gen_arr.reshape(-1, gen_arr.shape[-1]).T
+                )
 
             error = gen_stat - real_stat
 
@@ -634,36 +662,36 @@ def plot_hourly_error_boxplots(power_values, input_dim):
                 box_data = [[error[t]] for t in half_hours]
             else:
                 if error.shape[0] != 24:
-                    error = error.T   # -> (48, n)
+                    error = error.T  # -> (48, n)
                 box_data = [error[t] for t in half_hours]
 
-            ax.boxplot(box_data, positions=half_hours, widths=0.6,
-                       patch_artist=True,
-                       boxprops=dict(facecolor='steelblue', alpha=0.6),
-                       medianprops=dict(color='red', linewidth=1.5),
-                       flierprops=dict(marker='.', markersize=2, alpha=0.3),
-                       whiskerprops=dict(linewidth=1),
-                       capprops=dict(linewidth=1))
-            #ax.axhline(0, color='black', linewidth=1.2, linestyle='--', label='Zero error')
-            #ax.set_title(f'{loss} — {level.capitalize()}', fontsize=22)
-            
-            ax.grid(axis='y', alpha=0.4)
-            ax.tick_params(axis='y', labelsize=20)
-            #ax.legend(fontsize=8)
+            ax.boxplot(
+                box_data,
+                positions=half_hours,
+                widths=0.6,
+                patch_artist=True,
+                boxprops=dict(facecolor="steelblue", alpha=0.6),
+                medianprops=dict(color="red", linewidth=1.5),
+                flierprops=dict(marker=".", markersize=2, alpha=0.3),
+                whiskerprops=dict(linewidth=1),
+                capprops=dict(linewidth=1),
+            )
+
+            ax.grid(axis="y", alpha=0.4)
+            ax.tick_params(axis="y", labelsize=20)
 
     for c in range(n_cols):
-        #axes[-1, c].set_xlabel('Half-Hour')
         axes[-1, c].set_xticks(half_hours[::2])
-        axes[-1, c].set_xticklabels([f'{h:02d}:00' for h in half_hours[::2]],
-                                      rotation=45, fontsize=20)
-    axes[1, 0].set_ylabel('Error (kW)', fontsize=20)
+        axes[-1, c].set_xticklabels(
+            [f"{h:02d}:00" for h in half_hours[::2]], rotation=45, fontsize=20
+        )
+    axes[1, 0].set_ylabel("Error (kW)", fontsize=20)
 
-    #plt.tight_layout()
     plt.subplots_adjust(wspace=0.2, hspace=0.05)
-    plt.savefig(f"results/hourly_error_boxplot_{input_dim}.pdf",
-                dpi=300, bbox_inches='tight')
+    plt.savefig(
+        f"results/hourly_error_boxplot_{input_dim}.pdf", dpi=300, bbox_inches="tight"
+    )
     plt.close()
-
 
 
 # Causality plots
@@ -689,6 +717,7 @@ def plot_seasonal_hourly_cate(results_df, dataset, label):
         sharey=True,
         dpi=300,
     )
+
     # Define Color Map for Hours (0-23)
     cmap = plt.get_cmap("turbo")
     norm = mcolors.Normalize(
