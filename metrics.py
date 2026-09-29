@@ -417,16 +417,11 @@ def measure_peaks(data, C=158, label="real"):
 
     agg_feat = {}
     agg_feat = {
-        "admd": admd,
         "fall slope night": fs_night,  # fall slope min of 1st deriv
-        "fall slope night duration": fs_night_duration,  # timesteps
         "rise slope morning": rs_morning,  # rise slope max of 1st deriv
-        "rise slope morning duration": rs_morning_duration,
         "Morning curvature": nighttoday_curvature,  # second deriv
         "rise slope evening": rs_evening,
-        "rise slope evening duration": rs_evening_duration,
         "fall slope evening": fs_evening,
-        "fall slope evening duration": fs_evening_duration,
         "Evening curvature": evetonight_curvature,  # second deriv
     }
 

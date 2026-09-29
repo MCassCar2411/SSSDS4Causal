@@ -23,9 +23,7 @@ CAUSAL_PATH_VAL: Path = BASE_DIRECTORY / f"data/causal_val_{DATASET}.csv"
 FILE_PATH_TRAIN: Path = BASE_DIRECTORY / f"data/train_{DATASET}.csv"
 # test validation 6 months ##Update to LCL if eval
 FILE_PATH_VAL: Path = BASE_DIRECTORY / f"data/val_{DATASET}.csv"
-# test extremes
-FILE_PATH_EXTREMES: Path = BASE_DIRECTORY / f"data/test_{DATASET}_extremes.csv"
-FILE_PATH_INFER: Path = BASE_DIRECTORY / "data/conditions_langside.csv"
+
 
 N_SAMPLES: int = 100
 RANDOM_SEED: int = 42
@@ -47,7 +45,6 @@ def main():
     match mode:
         case "causality":
             print("Starting Causal Analysis with DML...")
-            size: str = "hour"
             # Load data
             df: pd.DataFrame = pd.read_csv(CAUSAL_PATH)
             treatment: list[str] = ["temperature"]
@@ -60,17 +57,18 @@ def main():
                 "rainfall",
                 "month",
                 "Holiday",
-                "hour",
+                "hour"
             ]
+          
             # Eval model
             model_robustness(CAUSAL_PATH, treatment, controls, DATASET)
 
             # Train
-            causality_analysis(df, treatment, controls, size, DATASET, n_iterations=1)
+            causality_analysis(df, treatment, controls, DATASET, n_iterations=1)
 
             # Evaluate causal estimates
             refute_random_common_cause(
-                DATASET, num_simulations=100, random_state=RANDOM_SEED, df=CAUSAL_PATH
+                DATASET, num_simulations=25, random_state=RANDOM_SEED, df=CAUSAL_PATH
             )
 
         case "train":
@@ -103,7 +101,7 @@ def main():
             generate_samples(
                 FILE_PATH_TRAIN,
                 config,
-                FILE_PATH_EXTREMES,
+                FILE_PATH_VAL,
                 inference_data_path=inference_data_path,
                 n_samples=N_SAMPLES,
                 dataset=DATASET,

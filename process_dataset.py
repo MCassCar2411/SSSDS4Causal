@@ -93,7 +93,7 @@ class DiffusionDataset(Dataset):
         selected_date=None,
     ):
         data = pd.read_csv(file_path)
-        print(data)
+      
         self.seq_len = seq_len
         self.stride = stride
         self.split = split
@@ -104,21 +104,20 @@ class DiffusionDataset(Dataset):
 
         if split in ("validation", "inference"):
             if selected_date is not None:
-                print(data[self.sch.date])
-                print(selected_date)
+              
                 data = data[
                     (
                         (
-                            pd.to_datetime(data[self.sch.date], dayfirst=True)
+                            pd.to_datetime(data[self.sch.date])
                             >= str(selected_date[0])
                         )
                         & (
-                            pd.to_datetime(data[self.sch.date], dayfirst=True)
+                            pd.to_datetime(data[self.sch.date])
                             < str(selected_date[-1])
                         )
                     )
                 ].reset_index(drop=True)
-                print(data)
+              
 
             if split == "validation":
                 customer_data = data[target_cols]

@@ -237,7 +237,7 @@ def evaluate(
             dataset=dataset,
         )
 
-    models = {"WGAN", "SSSDS4+causal", "SSSDS4"}
+    models = {"WGAN", "CausalSSSDS4", "SSSDS4"}
     (
         admd_stats,
         power_values,
@@ -325,7 +325,7 @@ def evaluate_models(
 
     for loss_name in losses:
         print(loss_name)
-        if loss_name == "SSSDS4+causal" or "SSSDS4":
+        if loss_name == "CausalSSSDS4" or "SSSDS4":
             print(config)
             diffusion_model = Diffusion(config)  ##
             config.eval["epoch_id"] = 200
@@ -369,7 +369,7 @@ def evaluate_models(
                         num_days, T, size
                     )
 
-            elif loss_name == "SSSDS4+causal":
+            elif loss_name == "CausalSSSDS4":
                 with torch.set_grad_enabled(True):
                     """
                     generated_data = diffusion_model.infer(diffusion_model.denoiser, val_loader, train_loader, fixed_noise=True, type='Guide', p=100) #replace by loading the same data

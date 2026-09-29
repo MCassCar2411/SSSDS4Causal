@@ -314,7 +314,7 @@ def plot_admd_mdmd_distributions(admd_stats, input_dim):
         histtype="step",
         linewidth=3,
         linestyle="-",
-        color="k",
+        color="darkorange",
         label="Real",
     )
     for color, loss_name in zip(colors, loss_names):
@@ -325,7 +325,7 @@ def plot_admd_mdmd_distributions(admd_stats, input_dim):
             bins=50,
             density=True,
             histtype="step",
-            linewidth=2,
+            linewidth=3,
             linestyle="-",
             color=color,
             label=f"{loss_name}",
@@ -401,10 +401,7 @@ def plot_deriv_distirbutions(aggregate_feat, label):
         synth = aggregate_feat[loss]["synth"]
         for metric in metrics:
             real_vals = np.asarray(real[metric]).flatten()
-            synth_vals = np.asarray(synth[metric]).flatten()
-            if metric == "rise slope evening":
-                print(real_vals)
-                print(synth_vals)
+            synth_vals = np.asarray(synth[metric]).flatten()          
             wd_scores[loss][metric] = wasserstein_distance(real_vals, synth_vals)
 
     # WD summary bar chart

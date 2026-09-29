@@ -38,7 +38,7 @@ warnings.filterwarnings("ignore", message="X does not have valid feature names")
 def model_robustness(file_path, treatment, controls, dataset):
 
     robustness_configs = [
-        {"name": "Baseline", "n_folds": 5, "algo": "lgbm", "interaction": False},
+        {"name": "LGBM", "n_folds": 5, "algo": "lgbm", "interaction": False},
         {"name": "RF", "n_folds": 5, "algo": "rf", "interaction": False},
         {"name": "XGBoost", "n_folds": 5, "algo": "xgb", "interaction": False},
     ]
@@ -128,8 +128,6 @@ def causality_analysis(
     eq = "y_res ~ t_res"
 
     treatment_possibilities = treatment
-    window_size = 2000
-    step_size = 200
 
     # load best model
     master = pd.read_csv(
@@ -248,9 +246,6 @@ def causality_analysis(
                                         "base_temp": df_residualised["base_t"].mean(),
                                         "load_res": df_residualised["agg_resid"].std(),
                                         "temp_res": df_residualised["t_resid"].std(),
-                                        "rv_l": res["rv"],
-                                        "rva_l": res["rva"],
-                                        "partial_r2_l": res["partial_r2"],
                                         "rv": RV,
                                         "rva": RVA,
                                         "r2tu_w": b_res["r2tu_w"],
@@ -280,10 +275,7 @@ def causality_analysis(
                                         "base_load": df_residualised["base_y"].mean(),
                                         "base_temp": df_residualised["base_t"].mean(),
                                         "load_res": df_residualised["agg_resid"].std(),
-                                        "temp_res": df_residualised["t_resid"].std(),
-                                        "rv_l": res["rv"],
-                                        "rva_l": res["rva"],
-                                        "partial_r2_l": res["partial_r2"],
+                                        "temp_res": df_residualised["t_resid"].std()
                                     }
                                 )
                             pbar.update(1)  # Update the progress bar
@@ -294,12 +286,12 @@ def causality_analysis(
 
         if save:
             results_df.to_csv(
-                f"results/causality/{dataset}/results_causal_{treatment}_per_hour_day_{customer_size}.csv",
+                f"results/causality/{dataset}/results_causal_{treatment}_per_hour_day.csv",
                 index=False,
             )
 
             results_df = pd.read_csv(
-                f"results/causality/{dataset}/results_causal_{treatment}_per_hour_day_{customer_size}.csv"
+                f"results/causality/{dataset}/results_causal_{treatment}_per_hour_day.csv"
             )
 
             models, _, _ = get_guidance_function(results_df)
@@ -324,7 +316,7 @@ def refute_random_common_cause(
 
     path = f"results/causality/{dataset}"
     og_df = pd.read_csv(
-        f"{path}/results_causal_temperature_per_hour_day_hour.csv"
+        f"{path}/results_causal_temperature_per_hour_day.csv"
     )  # change name later
 
     if run:
@@ -498,7 +490,7 @@ def calculate_sub_impact(
     val_path, dataset, cal_path=None, task="val", selected_date=None
 ):
     cate_df = pd.read_csv(
-        f"results/causality/{dataset}/results_causal_temperature_per_hour_day_hour.csv"
+        f"results/causality/{dataset}/results_causal_temperature_per_hour_day.csv"
     )
 
     cate_df = filter_robust_estimates(cate_df, dataset, run=False)
@@ -559,22 +551,6 @@ def calculate_sub_impact(
 
     if task == "infer":
         val_df = pd.concat([val_df, res_df], axis=1).reset_index(drop=True)
-        # Error
-        # Calculate MAE
-        mae = mean_absolute_error(val_df["target_load"], val_df["Aggregate"])
-        print(f"MAE: {mae}")
-
-        avg_load = val_df["Aggregate"].mean()
-        print(avg_load)
-        mape = (mae / avg_load) * 100
-        print(f"Your Error %: {mape:.2f}%")
-        mape = mean_absolute_percentage_error(
-            val_df["target_load"], val_df["Aggregate"]
-        )
-        print(f"Your Error %: {mape:.2f}%")
-
-        rmse = np.sqrt(mean_squared_error(val_df["target_load"], val_df["Aggregate"]))
-        print(f"RMSE: {rmse}")
 
         if selected_date:
             val_df = val_df[
