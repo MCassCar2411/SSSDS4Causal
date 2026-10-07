@@ -350,6 +350,7 @@ def evaluate_models(
             for param in diffusion_model.denoiser.parameters():
                 param.requires_grad = False
             if loss_name == "SSSDS4":
+                set_seed(seed)
                 with torch.no_grad():
                     """
                     generated_data = diffusion_model.infer(diffusion_model.denoiser, val_loader,  train_loader, fixed_noise=True, type='DDPM')
@@ -370,6 +371,7 @@ def evaluate_models(
                     )
 
             elif loss_name == "CausalSSSDS4":
+                set_seed(seed)
                 with torch.set_grad_enabled(True):
                     """
                     generated_data = diffusion_model.infer(diffusion_model.denoiser, val_loader, train_loader, fixed_noise=True, type='Guide', p=100) #replace by loading the same data
@@ -390,6 +392,7 @@ def evaluate_models(
                     )
 
         if loss_name == "WGAN":
+            set_seed(seed)
             load_path = f"train/WGANGP/load_WGANGP_1_0_{dataset}"
 
             max_cap = 1
@@ -576,7 +579,7 @@ def evaluate_models(
     )
 
 
-def evaluate_p(config, file_path_train, file_path_val, device, dataset="elektro"):
+def evaluate_p(config, file_path_train, file_path_val, device, dataset="elektro", seed=42):
     n_samples = 500
     seed = 42
     real_data_list, x_t_val_list, agg_data_list = [], [], []
@@ -638,7 +641,7 @@ def evaluate_p(config, file_path_train, file_path_val, device, dataset="elektro"
         param.requires_grad = False
 
     p_dict = {}
-    p_arr = [1, 10, 15, 20, 50, 60, 75, 100]  # Example p values to test
+    p_arr = [1, 10, 20, 50, 75, 100, 150]  # Example p values to test
     with torch.set_grad_enabled(True):
         for p_val in p_arr:
             print(f"This is pval:{p_val}")
@@ -652,6 +655,7 @@ def evaluate_p(config, file_path_train, file_path_val, device, dataset="elektro"
                 generated_dataset = generated_dataset.values.reshape(num_days, T, size)
 
             else:
+                set_seed(seed)
                 generated_data = diffusion_model.infer(
                     diffusion_model.denoiser,
                     val_loader,
